@@ -8,7 +8,7 @@ class I2C {
     * @bref Constructor
     * @param system path like "/dev/i2c-2"
     */
-    I2C(char *i2c_path);
+    I2C(char const *i2c_path);
     /*
     * @bref Read from I2C device
     * @param Address of the i2c device

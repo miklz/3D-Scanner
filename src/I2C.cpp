@@ -17,7 +17,7 @@
 // Our I2C Class
 #include "I2C.hpp"
 
-I2C::I2C(char *i2c_path) {
+I2C::I2C(char const *i2c_path) {
 
   _i2c_file = open(i2c_path, O_RDWR);
 
@@ -56,14 +56,10 @@ bool I2C::write_register(uint8_t deviceAddress, uint8_t registerAddress,
 
   memcpy(&buffer[1], dataPointer, length);
 
-  if(write(_i2c_file, buffer, length+1)) {
+  if(write(_i2c_file, buffer, length+1) != length+1) {
     perror("I2C Write failed: ");
     return false;
   }
 
   return true;
-}
-
-int main (void) {
-  return 0;
 }
