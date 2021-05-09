@@ -2,6 +2,7 @@
 #include <cerrno>
 #include <string.h>
 #include <unistd.h>
+#include <endian.h>
 
 #include "I2C.hpp"
 #include "ADXL345.hpp"
@@ -25,7 +26,7 @@ ADXL345::ADXL345(I2C &i2c): _i2c(i2c) {
   _interrupt_enable_ctrl = 0;
   _interrupt_map_pin_ctrl = 0;
   _data_format = 0;
-
+  _scale_factor = 0.0039;
 }
 
 /** @brief
@@ -298,7 +299,7 @@ uint8_t ADXL345::get_active_inactive_ctrl(void) {
 bool ADXL345::set_active_inactive_ctrl(uint8_t value) {
   bool b = this->writeRegister(ADXL345_INACTIVITY_TIME, value);
   if(b) {
-    this->_inactive_threshold = value;
+    this->_active_inactive_ctrl = value;
   }
   return b;
 }
@@ -317,7 +318,7 @@ bool ADXL345::set_free_fall_threshold(uint16_t milli_gs) {
 
   bool b = this->writeRegister(ADXL345_FREE_FALL_THRESHOLD, value);
   if(b) {
-    this->_inactive_threshold = milli_gs;
+    this->_free_fall_threshold = milli_gs;
   }
   return b;
 }
@@ -336,7 +337,7 @@ bool ADXL345::set_free_tall_time(uint16_t milliseconds) {
 
   bool b = this->writeRegister(ADXL345_FREE_FALL_TIME, value);
   if(b) {
-    this->_tap_window = milliseconds;
+    this->_free_fall_time = milliseconds;
   }
   return b;
 }
@@ -480,48 +481,46 @@ uint8_t ADXL345::get_data_format(void) {
 bool ADXL345::set_data_format(uint8_t value) {
   bool b = this->writeRegister(ADXL345_DATA_FORMAT_CTRL, value);
   if(b) {
-    this->_interrupt_map_pin_ctrl = _data_format;
+    this->_data_format = value;
   }
+
+  if(value & ADXL345_FULL_RES) {
+    _scale_factor = 0.0039;
+  } else if((value & ((ADXL345_RANGE_1) | ADXL345_RANGE_0)) == 0) {
+    _scale_factor = 0.0039;
+  } else if((value & ((ADXL345_RANGE_1) | ADXL345_RANGE_0)) == 1) {
+    _scale_factor = 0.0078;
+  } else if((value & ((ADXL345_RANGE_1) | ADXL345_RANGE_0)) == 2) {
+    _scale_factor = 0.0156;
+  } else {
+    _scale_factor = 0.0312;
+  }
+
   return b;
 }
 
 /** @brief  Get acceleration value in the x-axis
  *  @param  None
- *  @return Value in mg
+ *  @return Value in g
  */
-int16_t ADXL345::get_x_data(void) {
-  uint16_t data = 0;
-
-  readRegister(ADXL345_DATA_X0, (uint8_t *)&data, 2);
-  data = data*0.0039;
-
-  return data;
+float ADXL345::get_x_data(void) {
+  return _gx;
 }
 
 /** @brief  Get acceleration value in the y-axis
  *  @param  None
- *  @return Value in mg
+ *  @return Value in g
  */
-int16_t ADXL345::get_y_data(void) {
-  uint16_t data = 0;
-
-  readRegister(ADXL345_DATA_Y0, (uint8_t *)&data, 2);
-  data = data*0.0039;
-
-  return data;
+float ADXL345::get_y_data(void) {
+  return _gy;
 }
 
 /** @brief  Get acceleration value in the z-axis
  *  @param  None
- *  @return Value in mg
+ *  @return Value in g
  */
-int16_t ADXL345::get_z_data(void) {
-  uint16_t data = 0;
-
-  readRegister(ADXL345_DATA_Z0, (uint8_t *)&data, 2);
-  data = data*0.0039;
-
-  return data;
+float ADXL345::get_z_data(void) {
+  return _gz;
 }
 
 /** @brief  Returns how the FIFO is working
@@ -556,6 +555,16 @@ uint8_t ADXL345::get_fifo_status(void) {
   return data;
 }
 
+void ADXL345::get_raw_data(void) {
+  uint16_t data[3];
+
+  readRegister(ADXL345_DATA_X0, (uint8_t *)&data, 6);
+
+  _gx = ((int16_t)htole16(data[0]))*_scale_factor;
+  _gy = ((int16_t)htole16(data[1]))*_scale_factor;
+  _gz = ((int16_t)htole16(data[2]))*_scale_factor;
+}
+
 bool ADXL345::writeRegister(uint8_t address, uint8_t data) {
   bool b = _i2c.write_register(this->_id, address, &data);
 	if (!b) {
@@ -582,6 +591,7 @@ int main(void) {
   accelero.set_power_ctrl(ADXL345_MEASURE);
 
   while(1) {
+    accelero.get_raw_data();
     std::cout << "X-axis: " << accelero.get_x_data() << std::endl;
     std::cout << "Y-axis: " << accelero.get_y_data() << std::endl;
     std::cout << "Z-axis: " << accelero.get_z_data() << std::endl;

@@ -518,15 +518,15 @@ class ADXL345 {
     /*
     * Returns the value of the x-axis
     */
-    int16_t get_x_data(void);
+    float get_x_data(void);
     /*
     * Returns the value of the y-axis
     */
-    int16_t get_y_data(void);
+    float get_y_data(void);
     /*
     * Returns the value of the z-axis
     */
-    int16_t get_z_data(void);
+    float get_z_data(void);
     /*
     * Returns the configuration of the FIFO
     */
@@ -578,17 +578,18 @@ class ADXL345 {
     */
     uint8_t get_fifo_status(void);
 
+    void get_raw_data(void);
+
   private:
-    uint8_t _id;
-    uint16_t _threshold_tap;
+    uint8_t _id, _power_ctrl, _fifo_ctrl, _axes_tap_ctrl;
     uint8_t _offset_x, _offset_y, _offset_z;
-    uint16_t _tap_duration, _axes_tap_ctrl;
+    uint16_t _threshold_tap, _tap_duration;
     uint8_t _active_inactive_ctrl, _interrupt_enable_ctrl, _interrupt_map_pin_ctrl;
     uint8_t _data_rt_power_ctrl, _data_format;
     uint16_t _active_threshold, _inactive_threshold, _tap_latency, _tap_window;
     uint8_t _free_fall_threshold, _free_fall_time, _time_inactive;
-    uint8_t _power_ctrl;
-    uint8_t _fifo_ctrl;
+
+    float _gx, _gy, _gz, _scale_factor;
 
     I2C &_i2c;
 
