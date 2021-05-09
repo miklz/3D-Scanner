@@ -592,7 +592,15 @@ class ADXL345 {
     float _gx, _gy, _gz, _scale_factor;
 
     I2C &_i2c;
-
+    
+    /*
+    * Funtion to write one byte in a specific register of the device
+    */
     bool writeRegister(uint8_t address, uint8_t data);
+    /*
+    * Funtion to read one or more bytes from the registers, following the
+    * datasheet, the internal pointer of the register is incremented in each read,
+    * therefore is only needed the first register address.
+    */
     bool readRegister(uint8_t address, uint8_t *data, uint8_t length = 1);
 };
