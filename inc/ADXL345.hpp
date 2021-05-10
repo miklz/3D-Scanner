@@ -518,15 +518,15 @@ class ADXL345 {
     /*
     * Returns the value of the x-axis
     */
-    float get_x_data(void);
+    float get_x_value(void);
     /*
     * Returns the value of the y-axis
     */
-    float get_y_data(void);
+    float get_y_value(void);
     /*
     * Returns the value of the z-axis
     */
-    float get_z_data(void);
+    float get_z_value(void);
     /*
     * Returns the configuration of the FIFO
     */
@@ -592,7 +592,7 @@ class ADXL345 {
     float _gx, _gy, _gz, _scale_factor;
 
     I2C &_i2c;
-    
+
     /*
     * Funtion to write one byte in a specific register of the device
     */

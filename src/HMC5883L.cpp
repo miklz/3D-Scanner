@@ -125,18 +125,3 @@ bool HMC5883L::readRegister(uint8_t address, uint8_t *data, uint8_t length) {
 	}
   return true;
 }
-
-int main(void) {
-  I2C i2c("/dev/i2c-2");
-  HMC5883L magneto(i2c);
-
-  while(1) {
-    magneto.get_raw_data();
-    std::cout << "X-axis: " << magneto.get_x_value() << std::endl;
-    std::cout << "Y-axis: " << magneto.get_y_value() << std::endl;
-    std::cout << "Z-axis: " << magneto.get_z_value() << std::endl;
-    sleep(1);
-  }
-
-  return 0;
-}

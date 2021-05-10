@@ -503,7 +503,7 @@ bool ADXL345::set_data_format(uint8_t value) {
  *  @param  None
  *  @return Value in g
  */
-float ADXL345::get_x_data(void) {
+float ADXL345::get_x_value(void) {
   return _gx;
 }
 
@@ -511,7 +511,7 @@ float ADXL345::get_x_data(void) {
  *  @param  None
  *  @return Value in g
  */
-float ADXL345::get_y_data(void) {
+float ADXL345::get_y_value(void) {
   return _gy;
 }
 
@@ -519,7 +519,7 @@ float ADXL345::get_y_data(void) {
  *  @param  None
  *  @return Value in g
  */
-float ADXL345::get_z_data(void) {
+float ADXL345::get_z_value(void) {
   return _gz;
 }
 
@@ -582,21 +582,4 @@ bool ADXL345::readRegister(uint8_t address, uint8_t *data, uint8_t length) {
     return false;
 	}
   return true;
-}
-
-int main(void) {
-
-  I2C i2c("/dev/i2c-2");
-  ADXL345 accelero(i2c);
-  accelero.set_power_ctrl(ADXL345_MEASURE);
-
-  while(1) {
-    accelero.get_raw_data();
-    std::cout << "X-axis: " << accelero.get_x_data() << std::endl;
-    std::cout << "Y-axis: " << accelero.get_y_data() << std::endl;
-    std::cout << "Z-axis: " << accelero.get_z_data() << std::endl;
-    sleep(1);
-  }
-
-  return 0;
 }

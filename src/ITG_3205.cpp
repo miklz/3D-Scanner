@@ -211,7 +211,7 @@ bool ITG_3205::readRegister(uint8_t address, uint8_t *data, uint8_t length) {
 
 /**
  * @bref  Internal function to write using i2c
- * @param Register address 
+ * @param Register address
  * @param Data to write (byte)
  * @return true if success or false if don't
  */
@@ -221,20 +221,4 @@ bool ITG_3205::writeRegister(uint8_t address, uint8_t data) {
 		throw(std::runtime_error(std::string("Error writing byte to register: ") + strerror(errno)));
 	}
   return b;
-}
-
-// test
-int main(void) {
-
-  I2C i2c("/dev/i2c-2");
-  ITG_3205 gyro(i2c);
-
-  while(1) {
-    gyro.get_raw_data();
-    std::cout << "Temperature: " << gyro.get_temperature() << std::endl;
-    std::cout << "X-axis: " << gyro.get_x_value() << std::endl;
-    std::cout << "Y-axis: " << gyro.get_y_value() << std::endl;
-    std::cout << "Z-axis: " << gyro.get_z_value() << std::endl;
-    sleep(1);
-  }
 }
