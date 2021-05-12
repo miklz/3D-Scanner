@@ -8,6 +8,7 @@
 #include "ITG_3205.hpp"
 
 ITG_3205::ITG_3205(I2C &i2c) : _i2c(i2c) {
+  // Setting some values to work properly
   this->_id = 0x68;
   set_sample_rate_divider(7);
   set_digital_low_pass_filter_config(0);
@@ -154,7 +155,7 @@ float ITG_3205::get_z_value(void) {
 }
 
 /**
- * @bref  Load all at once and do the convertion
+ * @bref  Load all data at once and do the convertion
  * @param None
  * @return None
  */

@@ -8,6 +8,7 @@
 #include "ADXL345.hpp"
 
 ADXL345::ADXL345(I2C &i2c): _i2c(i2c) {
+  // Default values (see datasheet)
   _id = ADXL345_DEFAULT_ADDRESS;
   _offset_x = 0;
   _offset_y = 0;
