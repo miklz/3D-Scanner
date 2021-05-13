@@ -1,5 +1,6 @@
 #include <iostream>
 #include <cerrno>
+#include <cmath>
 #include <string.h>
 #include <unistd.h>
 #include <endian.h>
@@ -72,7 +73,7 @@ bool ADXL345::set_threshold_tap(uint16_t milli_gs) {
  *  @param  None
  *  @return Value of the offset
  */
-uint8_t ADXL345::get_offset_x(void) {
+int8_t ADXL345::get_offset_x(void) {
   return _offset_x;
 }
 
@@ -80,7 +81,7 @@ uint8_t ADXL345::get_offset_x(void) {
  *  @param  None
  *  @return Value of the offset
  */
-uint8_t ADXL345::get_offset_y(void) {
+int8_t ADXL345::get_offset_y(void) {
   return _offset_y;
 }
 
@@ -88,7 +89,7 @@ uint8_t ADXL345::get_offset_y(void) {
  *  @param  None
  *  @return Value of the offset
  */
-uint8_t ADXL345::get_offset_z(void) {
+int8_t ADXL345::get_offset_z(void) {
   return _offset_z;
 }
 
@@ -96,8 +97,8 @@ uint8_t ADXL345::get_offset_z(void) {
  *  @param  value of the offset
  *  @return true if success and false if failure
  */
-bool ADXL345::set_offset_x(uint8_t value) {
-  bool b = this->writeRegister(ADXL345_X_AXIS_OFFSET, value);
+bool ADXL345::set_offset_x(int8_t value) {
+  bool b = this->writeRegister(ADXL345_X_AXIS_OFFSET, (uint8_t)value);
   if(b) {
     this->_offset_x = value;
   }
@@ -108,8 +109,8 @@ bool ADXL345::set_offset_x(uint8_t value) {
  *  @param  value of the offset
  *  @return true if success and false if failure
  */
-bool ADXL345::set_offset_y(uint8_t value) {
-  bool b = this->writeRegister(ADXL345_Y_AXIS_OFFSET, value);
+bool ADXL345::set_offset_y(int8_t value) {
+  bool b = this->writeRegister(ADXL345_Y_AXIS_OFFSET, (uint8_t)value);
   if(b) {
     this->_offset_y = value;
   }
@@ -120,8 +121,8 @@ bool ADXL345::set_offset_y(uint8_t value) {
  *  @param  value of the offset
  *  @return true if success and false if failure
  */
-bool ADXL345::set_offset_z(uint8_t value) {
-  bool b = this->writeRegister(ADXL345_Z_AXIS_OFFSET, value);
+bool ADXL345::set_offset_z(int8_t value) {
+  bool b = this->writeRegister(ADXL345_Z_AXIS_OFFSET, (uint8_t)value);
   if(b) {
     this->_offset_z = value;
   }
@@ -328,7 +329,7 @@ bool ADXL345::set_free_fall_threshold(uint16_t milli_gs) {
  *  @param  Value in milliseconds
  *  @return true if success and false if failure to new value
  */
-bool ADXL345::set_free_tall_time(uint16_t milliseconds) {
+bool ADXL345::set_free_fall_time(uint16_t milliseconds) {
   uint8_t value = milliseconds*0.2; // Scale = 5ms/LSB => 0.2LSB/ms
 
   if(milliseconds > 1275) {
@@ -524,6 +525,21 @@ float ADXL345::get_z_value(void) {
   return _gz;
 }
 
+/**
+ * @bref  Load all data at once and do the convertion
+ * @param None
+ * @return None
+ */
+void ADXL345::get_raw_data(void) {
+  uint16_t data[3];
+
+  readRegister(ADXL345_DATA_X0, (uint8_t *)&data, 6);
+
+  _gx = ((int16_t)htole16(data[0]))*_scale_factor;
+  _gy = ((int16_t)htole16(data[1]))*_scale_factor;
+  _gz = ((int16_t)htole16(data[2]))*_scale_factor;
+}
+
 /** @brief  Returns how the FIFO is working
  *  @param  None
  *  @return FIFO configuration
@@ -556,16 +572,76 @@ uint8_t ADXL345::get_fifo_status(void) {
   return data;
 }
 
-void ADXL345::get_raw_data(void) {
+/** @brief  Correct the offset of the accelerometer
+ *  @param  None
+ *  @return True if the offset was performed successfuly and false if not
+ */
+bool ADXL345::offset_calibration(void) {
+
+  uint8_t old_data_format = get_data_format();
+  uint8_t new_data_format = ADXL345_FULL_RES + ADXL345_RANGE_1 + ADXL345_RANGE_0;
+
+  if(!set_data_format(new_data_format)) {
+    return false;
+  }
+
+  uint8_t old_power_ctrl = get_power_ctrl();
+
+  if(!set_power_ctrl(ADXL345_MEASURE)) {
+    return false;
+  }
+
+  uint8_t old_data_rt_pwr_ctrl = get_data_rt_power_ctrl();
+  if(!set_data_rt_power_ctrl(0x0A)) {
+    return false;
+  }
+
   uint16_t data[3];
+  int16_t x_0g = 0, y_0g = 0, z_0g = 0;
 
-  readRegister(ADXL345_DATA_X0, (uint8_t *)&data, 6);
+  for(uint8_t i = 0; i < 64; ++i) {
+    sleep(0.1);
+    readRegister(ADXL345_DATA_X0, (uint8_t *)&data, 6);
+    x_0g = (int16_t)htole16(data[0]) + x_0g;
+    y_0g = (int16_t)htole16(data[1]) + y_0g;
+    z_0g = (int16_t)htole16(data[2]) + z_0g;
+  }
 
-  _gx = ((int16_t)htole16(data[0]))*_scale_factor;
-  _gy = ((int16_t)htole16(data[1]))*_scale_factor;
-  _gz = ((int16_t)htole16(data[2]))*_scale_factor;
+  // >> of six is for the average
+  // >> of 2 is for convert the resolution of the axes to the offset register
+  int8_t x_off, y_off, z_off;
+  x_off = -(x_0g >> 8);
+  y_off = -(y_0g >> 8);
+  z_off = -(((z_0g >> 6) + 256) >> 2);
+
+  if(!(set_offset_x(x_off)) && (set_offset_y(y_off)) && (set_offset_z(z_off))) {
+    return false;
+  }
+
+  if(!set_data_format(old_data_format) || !set_power_ctrl(old_power_ctrl) ||
+      !set_data_rt_power_ctrl(old_data_rt_pwr_ctrl)) {
+    return false;
+  }
+
+  return true;
 }
 
+/** @brief  Performs a test to verify if the accelerometer
+ *  @param  None
+ *  @return True if the device is withing the expected and false orderwise
+ *          but a false dosen't necessary indicates failure (see datasheet)
+ */
+bool ADXL345::self_test(void) {
+
+  return false;
+}
+
+ /**
+  * @bref  Internal function to write using i2c
+  * @param Register address
+  * @param Data to write (byte)
+  * @return true if success or false if don't
+  */
 bool ADXL345::writeRegister(uint8_t address, uint8_t data) {
   bool b = _i2c.write_register(this->_id, address, &data);
 	if (!b) {
@@ -574,6 +650,13 @@ bool ADXL345::writeRegister(uint8_t address, uint8_t data) {
   return b;
 }
 
+/**
+ * @bref  Internal function to read using i2c
+ * @param Register address
+ * @param Data to read
+ * @param How many bytes to read
+ * @return true if success or false if don't
+ */
 bool ADXL345::readRegister(uint8_t address, uint8_t *data, uint8_t length) {
   _i2c.write_register(this->_id, address, data, 0); // send address to read from
 

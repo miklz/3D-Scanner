@@ -134,27 +134,27 @@ class ADXL345 {
     /*
     * Returns the x offset of the x-axis
     */
-    uint8_t get_offset_x(void);
+    int8_t get_offset_x(void);
     /*
     * Returns the y offset of the y-axis
     */
-    uint8_t get_offset_y(void);
+    int8_t get_offset_y(void);
     /*
     * Returns the z offset of the z-axis
     */
-    uint8_t get_offset_z(void);
+    int8_t get_offset_z(void);
     /*
     * Set the x offset of the x-axis
     */
-    bool set_offset_x(uint8_t value);
+    bool set_offset_x(int8_t value);
     /*
     * Set the y offset of the y-axis
     */
-    bool set_offset_y(uint8_t value);
+    bool set_offset_y(int8_t value);
     /*
     * Set the z offset of the z-axis
     */
-    bool set_offset_z(uint8_t value);
+    bool set_offset_z(int8_t value);
     /*
     * Returns the duration in milliseconds of the tap to activate the interruption.
     */
@@ -273,7 +273,7 @@ class ADXL345 {
     * Values between 100ms and 350ms. Values less than 5ms may result in undesired
     * behavior if the free fall interrupt is enabled.
     */
-    bool set_free_tall_time(uint16_t milliseconds);
+    bool set_free_fall_time(uint16_t milliseconds);
     /*
     * Returns the configuration of axes able to participate in the tap detection.
     */
@@ -358,7 +358,7 @@ class ADXL345 {
     * The default is 0x0A, wich translates to a 100Hz output data rate.
     * An output data rate should be selected that is appropriate for the
     * communication protocol and frequency selected.
-    * Selectin too high of an output data rate with a low communication speed
+    * Selecting an output data rate too high with a low communication speed
     * results in samples being discarded.
     */
     bool set_data_rt_power_ctrl(uint8_t value);
@@ -528,6 +528,10 @@ class ADXL345 {
     */
     float get_z_value(void);
     /*
+    * Read all sensor data in one burst
+    */
+    void get_raw_data(void);
+    /*
     * Returns the configuration of the FIFO
     */
     uint8_t get_fifo_ctrl(void);
@@ -577,12 +581,29 @@ class ADXL345 {
     * they must be read in bursts because FIFO is cleared after any read.
     */
     uint8_t get_fifo_status(void);
+    /*
+    * Compensate automatically the offset for future readings.
+    * The 0 g bias or offset is an important accelerometer metric because it
+    * defines the baseline for measuring acceleration. Additional stresses can
+    * be applied during assembly of a system containing an accelerometer.
+    * The offset can then be automatically accounted for by using the built-in
+    * offset registers. This results in the data acquired from the DATA
+    * registers already compensating for any offset.
+    */
+    bool offset_calibration(void);
 
-    void get_raw_data(void);
+    /*
+    * Performs a self test to verify the integrity of the accelerometer
+    * The self-test change is defined as the difference between the acceleration
+    * output of an axis with self-test enabled and the acceleration output of
+    * the same axis with self-test disabled.
+    * The sel-test is used to verify accelerometer functionality.
+    */
+    bool self_test(void);
 
   private:
     uint8_t _id, _power_ctrl, _fifo_ctrl, _axes_tap_ctrl;
-    uint8_t _offset_x, _offset_y, _offset_z;
+    int8_t _offset_x, _offset_y, _offset_z;
     uint16_t _threshold_tap, _tap_duration;
     uint8_t _active_inactive_ctrl, _interrupt_enable_ctrl, _interrupt_map_pin_ctrl;
     uint8_t _data_rt_power_ctrl, _data_format;
