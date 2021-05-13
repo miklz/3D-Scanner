@@ -15,9 +15,12 @@ int main(void) {
 
   accelero.set_power_ctrl(ADXL345_MEASURE);
 
+  accelero.offset_calibration();
   while(1) {
-    if(accelero.offset_calibration()) {
-      std::cout << "Calibration OK" << std::endl;
+    if(accelero.self_test()) {
+      std::cout << "Self test OK" << std::endl;
+    } else {
+      std::cout << "Self test Fail" << std::endl;
     }
     sleep(1);
   }

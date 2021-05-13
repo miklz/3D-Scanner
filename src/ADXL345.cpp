@@ -588,11 +588,14 @@ bool ADXL345::offset_calibration(void) {
   uint8_t old_power_ctrl = get_power_ctrl();
 
   if(!set_power_ctrl(ADXL345_MEASURE)) {
+    set_data_format(old_data_format);
     return false;
   }
 
   uint8_t old_data_rt_pwr_ctrl = get_data_rt_power_ctrl();
   if(!set_data_rt_power_ctrl(0x0A)) {
+    set_data_format(old_data_format);
+    set_power_ctrl(old_power_ctrl);
     return false;
   }
 
@@ -614,7 +617,10 @@ bool ADXL345::offset_calibration(void) {
   y_off = -(y_0g >> 8);
   z_off = -(((z_0g >> 6) + 256) >> 2);
 
-  if(!(set_offset_x(x_off)) && (set_offset_y(y_off)) && (set_offset_z(z_off))) {
+  if(!((set_offset_x(x_off)) && (set_offset_y(y_off)) && (set_offset_z(z_off)))) {
+    set_data_format(old_data_format);
+    set_power_ctrl(old_power_ctrl);
+    set_data_rt_power_ctrl(old_data_rt_pwr_ctrl);
     return false;
   }
 
@@ -632,8 +638,91 @@ bool ADXL345::offset_calibration(void) {
  *          but a false dosen't necessary indicates failure (see datasheet)
  */
 bool ADXL345::self_test(void) {
+  uint8_t old_data_format = get_data_format();
+  uint8_t new_data_format = ADXL345_FULL_RES + ADXL345_RANGE_1 + ADXL345_RANGE_0;
 
-  return false;
+  if(!set_data_format(new_data_format)) {
+    return false;
+  }
+
+  uint8_t old_power_ctrl = get_power_ctrl();
+
+  if(!set_power_ctrl(ADXL345_MEASURE)) {
+    set_data_format(old_data_format);
+    return false;
+  }
+
+  uint8_t old_data_rt_pwr_ctrl = get_data_rt_power_ctrl();
+  if(!set_data_rt_power_ctrl(0x0C)) {
+    set_data_format(old_data_format);
+    set_power_ctrl(old_power_ctrl);
+    return false;
+  }
+
+  uint16_t data[3];
+  int16_t Xst_off = 0, Yst_off = 0, Zst_off = 0;
+
+  for(uint8_t i = 0; i < 64; ++i) {
+    sleep(0.1);
+    readRegister(ADXL345_DATA_X0, (uint8_t *)&data, 6);
+    Xst_off = (int16_t)htole16(data[0]) + Xst_off;
+    Yst_off = (int16_t)htole16(data[1]) + Yst_off;
+    Zst_off = (int16_t)htole16(data[2]) + Zst_off;
+  }
+
+  Xst_off = (Xst_off >> 6);
+  Yst_off = (Yst_off >> 6);
+  Zst_off = (Zst_off >> 6);
+
+  new_data_format = new_data_format + ADXL345_SELF_TEST;
+  if(!set_data_format(new_data_format)) {
+    set_data_format(old_data_format);
+    set_power_ctrl(old_power_ctrl);
+    set_data_rt_power_ctrl(old_data_rt_pwr_ctrl);
+    return false;
+  }
+
+  // It need to colect a few samples to settle
+  for(uint8_t i = 0; i < 10; ++i) {
+    sleep(0.1);
+    readRegister(ADXL345_DATA_X0, (uint8_t *)&data, 6);
+  }
+
+  int16_t Xst_on = 0, Yst_on = 0, Zst_on = 0;
+
+  for(uint8_t i = 0; i < 64; ++i) {
+    sleep(0.1);
+    readRegister(ADXL345_DATA_X0, (uint8_t *)&data, 6);
+    Xst_on = (int16_t)htole16(data[0]) + Xst_on;
+    Yst_on = (int16_t)htole16(data[1]) + Yst_on;
+    Zst_on = (int16_t)htole16(data[2]) + Zst_on;
+  }
+
+  Xst_on = (Xst_on >> 6);
+  Yst_on = (Yst_on >> 6);
+  Zst_on = (Zst_on >> 6);
+
+  int16_t Xst = Xst_on - Xst_off;
+  int16_t Yst = Yst_on - Yst_off;
+  int16_t Zst = Zst_on - Zst_off;
+
+  // Scale factor for 3.30V
+  std::cout << Xst << std::endl;
+  std::cout << Yst << std::endl;
+  std::cout << Zst << std::endl;
+  if((Xst < 6*1.77) || (Xst > 67*1.77) || (Yst < -67*1.77) ||
+  (Yst > -6*1.77) || (Zst < 10*1.47) || (Zst > 110*1.47)) {
+      set_data_format(old_data_format);
+      set_power_ctrl(old_power_ctrl);
+      set_data_rt_power_ctrl(old_data_rt_pwr_ctrl);
+      return false;
+    }
+
+  set_data_format(old_data_format);
+  set_power_ctrl(old_power_ctrl);
+  set_data_rt_power_ctrl(old_data_rt_pwr_ctrl);
+
+  return true;
 }
 
  /**
